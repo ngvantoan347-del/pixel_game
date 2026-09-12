@@ -6,11 +6,9 @@ import { loadSave } from "./saveSync";
 import { DEFAULT_SAVE } from "@/lib/saves";
 
 export class GameSession {
-  private base: SaveState;
   private current: SaveState;
 
   constructor(initial: SaveState) {
-    this.base = JSON.parse(JSON.stringify(initial));
     this.current = JSON.parse(JSON.stringify(initial));
   }
 
@@ -45,7 +43,9 @@ export class GameSession {
   addCoins(amount: number): void {
     const coins = Math.min(99999, this.current.coins + Math.max(0, amount));
     this.update({ coins });
-    events.emit("toast", { message: `+${amount} xu` });
+    if (amount > 0) {
+      events.emit("toast", { message: `+${amount} xu` });
+    }
   }
 
   gainItem(item: ItemType): boolean {
