@@ -44,8 +44,10 @@ export class GameScene extends Phaser.Scene {
       setGameSession(session);
     }
     const save = session.get();
-    this.map = MAPS[save.map_id];
+    const mapId = save.map_id;
+    this.map = MAPS[mapId];
     if (!this.scene.isActive("HudScene")) this.scene.launch("HudScene");
+    this.scene.bringToTop("HudScene");
 
     const grid = this.map.rows.map((r) => r.split("").map((ch) => LEGEND[ch] ?? 0));
     const tilemap = this.make.tilemap({ data: grid, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
@@ -58,8 +60,8 @@ export class GameScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, mapWidth, mapHeight);
     this.cameras.main.setBounds(0, 0, mapWidth, mapHeight);
 
-    const spawnX = this.map.id === "village" ? Number(save.pos_x) : this.map.spawn.x;
-    const spawnY = this.map.id === "village" ? Number(save.pos_y) : this.map.spawn.y;
+    const spawnX = save ? Number(save.pos_x) : this.map.spawn.x;
+    const spawnY = save ? Number(save.pos_y) : this.map.spawn.y;
 
     this.player = this.physics.add.sprite(spawnX, spawnY, "player").setCollideWorldBounds(true);
     this.physics.add.collider(this.player, this.layer);
