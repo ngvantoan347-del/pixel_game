@@ -17,10 +17,10 @@ describe("leaderboard", () => {
     });
   });
 
-  async function seedSave(userId: number, score: number) {
+  async function seedSave(userId: number, coins: number) {
     await db.execute({
-      sql: "INSERT INTO saves (user_id, score, updated_at) VALUES (?, ?, ?)",
-      args: [userId, score, `2026-01-01T00:00:${score}Z`],
+      sql: "INSERT INTO saves (user_id, coins, updated_at) VALUES (?, ?, ?)",
+      args: [userId, coins, `2026-01-01T00:00:${coins}Z`],
     });
   }
 
@@ -40,10 +40,24 @@ describe("leaderboard", () => {
   });
 
   it("records a run submission", async () => {
-    const res = await submitScore(db, 1, "alice", { score: 1500, boss_defeated: true });
+    await db.execute({
+      sql: "INSERT INTO saves (user_id, coins, boss_defeated, updated_at) VALUES (1, 500, 1, '2026-01-15T00:00:00Z')",
+      args: [],
+    });
+    const res = await submitScore(db, 1, "alice", { score: 99999, boss_defeated: false });
     expect(res.ok).toBe(true);
-    const rows = await getLeaderboardRows(db);
-    expect(rows[0].score).toBe(1500);
-    expect(rows[0].boss_defeated).toBe(true);
+    const historyRows = (await db.execute("SELECT score, boss_defeated FROM leaderboard WHERE user_id = 1")).rows;
+    expect(historyRows).toHaveLength(1);
+    expect(Number(historyRows[0].score)).toBe(1500);
+    expect(Number(historyRows[0].boss_defeated)).toBe(1);
+    const leaderRows = await getLeaderboardRows(db);
+    expect(leaderRows[0].score).toBe(1500);
+    const saveAfter = (await db.execute("SELECT coins FROM saves WHERE user_id = 1")).rows;
+    expect(Number(saveAfter[0].coins)).toBe(500);
+  });
+
+  it("rejects submission when no save exists", async () => {
+    const res = await submitScore(db, 1, "alice", { score: 100, boss_defeated: false });
+    expect(res.ok).toBe(false);
   });
 });

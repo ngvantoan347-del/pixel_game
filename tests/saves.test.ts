@@ -38,6 +38,11 @@ describe("saves", () => {
     expect(res.ok).toBe(false);
   });
 
+  it("rejects hp above max_hp", () => {
+    const res = clampSave({ ...validSave(), hp: 90, max_hp: 50 });
+    expect(res.ok).toBe(false);
+  });
+
   it("computes score with boss bonus", () => {
     expect(computeScore({ ...validSave(), coins: 500, boss_defeated: false })).toBe(500);
     expect(computeScore({ ...validSave(), coins: 500, boss_defeated: true })).toBe(1500);
@@ -49,9 +54,7 @@ describe("saves", () => {
       sql: "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
       args: ["alice", "hash", "2026-01-01T00:00:00Z"],
     });
-    const save = { ...validSave(), coffins: 0 } as Record<string, unknown>;
-    for (const k of ["coffins"]) delete save[k];
-    const patch = { ...(save as object), coins: 42, sword_level: 3, map_id: "cave" } as typeof DEFAULT_SAVE;
+    const patch = { ...validSave(), coins: 42, sword_level: 3, map_id: "cave" } as typeof DEFAULT_SAVE;
     await putSaveRow(db, 1, patch);
     const read = await getSaveRow(db, 1);
     expect(read?.coins).toBe(42);

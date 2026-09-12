@@ -43,6 +43,8 @@ const saveSchema = z.object({
   quests: questSchema,
   boss_defeated: z.boolean(),
   score: z.number().int().min(0).max(999999).optional(),
+}).refine((data) => data.hp <= data.max_hp, {
+  message: "hp chạm max_hp",
 });
 
 export function clampSave(raw: unknown): { ok: true; save: SaveState } | { ok: false; error: string } {
