@@ -3,6 +3,7 @@ import { TILE_SIZE } from "@/game/config";
 import { MAPS, LEGEND, type ParsedMap } from "@/game/world/maps";
 import { events } from "@/game/systems/events";
 import { GameSession, getGameSession, setGameSession } from "@/game/systems/session";
+import { pushSave } from "@/game/systems/saveSync";
 import { DEFAULT_SAVE } from "@/lib/saves";
 import { getSwordDamage, rollCoinDrop, knockbackPosition, positionInRange } from "@/game/systems/combat";
 import { pickupChestReward } from "@/game/systems/pickups";
@@ -11,12 +12,16 @@ import type { Direction } from "@/types";
 export const PLAYER_SPEED = 160;
 export const SOLID_TILES = new Set([3, 4, 5]);
 const SLIME_MAX_HP = 25;
+const BOSS_MAX_HP = 300;
+let bossIntroShown = false;
 
 export class GameScene extends Phaser.Scene {
   map!: ParsedMap;
   player!: Phaser.Physics.Arcade.Sprite;
   layer!: Phaser.Tilemaps.TilemapLayer;
   enemies!: Phaser.Physics.Arcade.Group;
+  boss: Phaser.Physics.Arcade.Sprite | null = null;
+  bossHp = 0;
   cursors!: {
     up: Phaser.Input.Keyboard.Key;
     down: Phaser.Input.Keyboard.Key;
@@ -83,6 +88,18 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.enemies, this.layer);
     this.input.keyboard!.on("keydown-SPACE", () => this.swingSword());
 
+    this.boss = null;
+    if (this.map.boss) {
+      this.boss = this.physics.add.sprite(this.map.boss.x, this.map.boss.y, "boss").setScale(2);
+      this.bossHp = BOSS_MAX_HP;
+      this.physics.add.collider(this.boss, this.layer);
+    }
+
+    if (save.map_id === "arena" && !bossIntroShown) {
+      bossIntroShown = true;
+      this.scene.launch("BossIntroScene");
+    }
+
     this.addMapDecor();
   }
 
@@ -128,6 +145,10 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    if (this.boss && this.boss.active && Phaser.Geom.Intersects.RectangleToRectangle(rect.getBounds(), this.boss.getBounds())) {
+      this.hurtBoss(damage);
+    }
+
     this.time.delayedCall(140, () => {
       if (this.attackRect) this.attackRect.destroy();
       this.attackRect = null;
@@ -170,6 +191,26 @@ export class GameScene extends Phaser.Scene {
     if (session.get().hp <= 0) this.scene.start("GameOverScene");
   }
 
+  private hurtBoss(dmg: number): void {
+    if (!this.boss) return;
+    this.bossHp -= dmg;
+    this.boss.setTintFill(0xffaaaa);
+    this.time.delayedCall(90, () => this.boss?.clearTint());
+    if (this.bossHp <= 0) {
+      this.boss.destroy();
+      this.boss = null;
+      bossIntroShown = false;
+      const session = getGameSession();
+      if (session) {
+        session.defeatBoss();
+        pushSave(session.toSave()).catch(() => {});
+      }
+      this.scene.stop("HudScene");
+      this.scene.stop();
+      this.scene.start("VictoryScene");
+    }
+  }
+
   private updateEnemies(): void {
     const copy = [...this.enemies.getChildren()] as Phaser.Physics.Arcade.Sprite[];
     for (const s of copy) {
@@ -183,6 +224,19 @@ export class GameScene extends Phaser.Scene {
         if (this.player.active && dist < 18) this.hurtPlayer(5);
       } else {
         s.setVelocity(0, 0);
+      }
+    }
+
+    if (this.boss && this.boss.active) {
+      const dxb = this.player.x - this.boss.x;
+      const dyb = this.player.y - this.boss.y;
+      const distb = Math.hypot(dxb, dyb);
+      if (distb < 220) {
+        const spd = 45;
+        this.boss.setVelocity((dxb / Math.max(distb, 1)) * spd, (dyb / Math.max(distb, 1)) * spd);
+        if (distb < 30) this.hurtPlayer(12);
+      } else {
+        this.boss.setVelocity(0, 0);
       }
     }
   }
