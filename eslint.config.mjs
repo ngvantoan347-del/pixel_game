@@ -13,5 +13,13 @@ const config = [
     files: ["next-env.d.ts"],
     rules: { "@typescript-eslint/triple-slash-reference": "off" },
   },
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+    },
+  },
 ];
 export default config;
