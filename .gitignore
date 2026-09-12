@@ -10,3 +10,5 @@ data/
 .superpowers/
 .vercel
 .env*
+
+turso.txt
