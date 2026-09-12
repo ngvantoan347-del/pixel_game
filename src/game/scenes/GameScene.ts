@@ -5,6 +5,7 @@ import { events } from "@/game/systems/events";
 import { GameSession, getGameSession, setGameSession } from "@/game/systems/session";
 import { DEFAULT_SAVE } from "@/lib/saves";
 import { getSwordDamage, rollCoinDrop, knockbackPosition, positionInRange } from "@/game/systems/combat";
+import { pickupChestReward } from "@/game/systems/pickups";
 import type { Direction } from "@/types";
 
 export const PLAYER_SPEED = 160;
@@ -26,6 +27,7 @@ export class GameScene extends Phaser.Scene {
   };
   facing: Direction = "down";
   lastPortalAt = 0;
+  openedChests = new Set<string>();
   slimeHp = new Map<Phaser.GameObjects.GameObject, number>();
   attackTimer = 0;
   attackRect: Phaser.GameObjects.Rectangle | null = null;
@@ -206,6 +208,19 @@ export class GameScene extends Phaser.Scene {
       if (positionInRange(x, y, npc.x, npc.y, 30)) {
         const session = getGameSession();
         if (session) this.scene.launch("DialogueScene", { npcId: "quest" });
+        return;
+      }
+    }
+    for (const chest of this.map.chests) {
+      if (positionInRange(x, y, chest.x, chest.y, 24)) {
+        const key = `${this.map.id}:${chest.x}:${chest.y}`;
+        if (this.openedChests.has(key)) return;
+        this.openedChests.add(key);
+        const session = getGameSession();
+        if (session) {
+          const result = pickupChestReward(session);
+          events.emit("toast", { message: result.message });
+        }
         return;
       }
     }
