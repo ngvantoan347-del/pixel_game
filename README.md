@@ -1,26 +1,50 @@
 # Pixel Quest
 
-Top-down pixel action RPG built with Next.js 15, libSQL/Turso, and Phaser 3.
+Top-down pixel action RPG — Phaser 3 trên Next.js 15 với tài khoản, lưu game trên đám mây (Turso / libSQL), và bảng xếp hạng.
 
-## Getting started
+## Chạy local
+
+1. `npm install`
+2. Copy `.env.example` → `.env.local` (giá trị mặc định OK để chạy local)
+3. `npm run dev` → http://localhost:3000
+
+Local dùng SQLite file `./data/dev.db` — không cần tài khoản Turso.
+
+## Test / lint / build
 
 ```bash
-npm install
-npm run dev
+npm test
+npm run typecheck
+npm run lint
+npm run build
 ```
 
-## Scripts
+## Hướng dẫn chơi
 
-- `npm run dev` — start dev server
-- `npm run build` — production build
-- `npm run start` — start production server
-- `npm run lint` — eslint (strict, zero warnings)
-- `npm run typecheck` — tsc --noEmit
-- `npm run test` — vitest run
+| Phím | Hành động |
+|------|-----------|
+| W/A/S/D hoặc mũi tên | Di chuyển |
+| SPACE | Chém kiếm |
+| E | Tương tác (NPC / hòm / cổng) |
+| 1 | Uống bình máu |
+| S | Lưu game (tự động lưu mỗi 15s và khi đổi map) |
 
-## Environment
+Mục tiêu: diệt SLIME rồi làm quest của Bác Trưởng Làng rồi qua Rừng, Hang để hạ Boss ở Đấu Trường để chiến thắng. Điểm = xu + 1000 nếu hạ Boss.
 
-Copy `.env.example` to `.env` and adjust `DATABASE_URL` and `JWT_SECRET`.
+## Deploy lên Vercel (tự làm, không dùng vercel CLI)
 
-- `DATABASE_URL` default: `file:./data/dev.db`
-- `JWT_SECRET`: change in production to a long random string.
+1. Tạo database trên **Turso**: https://turso.tech — lệnh:
+   ```bash
+   turso db create pixelquest
+   turso db tokens create pixelquest   # lấy token
+   ```
+2. Đẩy repo lên GitHub/GitLab.
+3. Trên https://vercel.com: **Add New Project** → Import repo này.
+4. Cấu hình **Environment Variables**:
+   - `DATABASE_URL=libsql://pixelquest-xxx.turso.io` (URL từ bước 1)
+   - `DATABASE_URL` cũng có thể kèm `?authToken=...` hoặc dùng
+   - `JWT_SECRET=<chuỗi ngẫu nhiên dài>` (vd `openssl rand -hex 32`)
+5. Bấm **Deploy**. Xong!
+6. Sau deploy, ghé thăm `/api/save` để lần đầu khởi tạo bảng (tự động qua schema).
+
+Lưu ý: không đưa token/auth vào env layer trong client — Turso token chỉ nằm ở server (Next.js API routes), nơi biến môi trường là an toàn.

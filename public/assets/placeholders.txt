@@ -1,0 +1,16 @@
+Optional asset slots for Pixel Quest.
+
+The game ships with fully playable procedural pixel art generated at runtime.
+To swap in real spritesheets, drop the files below into public/assets/ and
+extend src/game/systems/textures.ts to load them.
+
+| Slot            | File suggestion       | Licence
+|-----------------|-----------------------|------------
+| landscape atlas | dungeon_tileset.png   | CC0 (0x72)
+| player sheet    | char_hero.png         | CC0
+| enemies         | slime / boss          | CC0
+| props/NPC/chest | kenney_pack_sheet.png | CC0
+
+See public/assets/README.md and CREDITS.md for sources and attribution.
+
+Drop real spritesheets here, then extend src/game/systems/textures.ts to load them.
