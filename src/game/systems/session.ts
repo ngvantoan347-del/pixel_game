@@ -2,6 +2,8 @@ import type { ItemType, QuestState, SaveState } from "@/types";
 import { events } from "./events";
 import { addItem, applySwordUpgrade, usePotion as drinkPotion } from "./inventory";
 import { acceptQuest, claimQuestReward, recordSlimeKill } from "./quest";
+import { loadSave } from "./saveSync";
+import { DEFAULT_SAVE } from "@/lib/saves";
 
 export class GameSession {
   private base: SaveState;
@@ -110,5 +112,24 @@ export class GameSession {
     const s = q.slime_quest;
     const state = !s.accepted ? "not_accepted" : s.claimed ? "claimed" : s.complete ? "complete" : "in_progress";
     return { kills: s.kills, target: 5, state };
+  }
+}
+
+let currentSession: GameSession | null = null;
+
+export function getGameSession(): GameSession | null {
+  return currentSession;
+}
+
+export function setGameSession(session: GameSession): void {
+  currentSession = session;
+}
+
+export async function loadGameSession(): Promise<GameSession> {
+  try {
+    const save = await loadSave();
+    return new GameSession(save);
+  } catch {
+    return new GameSession(JSON.parse(JSON.stringify(DEFAULT_SAVE)));
   }
 }
