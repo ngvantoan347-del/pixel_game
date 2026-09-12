@@ -12,7 +12,10 @@ export function pickupChestReward(session: GameSession): { message: string } {
     const ok = session.gainItem("potion");
     return ok ? { message: "Hòm kho báu: +1 Bình máu" } : { message: "Hòm kho báu: +1 Bình máu (túi đầy, bỏ lại)" };
   }
-  const ok = session.gainItem("sword_upgrade");
-  if (ok) session.pickupSwordUpgrade();
-  return { message: "Hòm kho báu: nâng cấp kiếm!" };
+  if (session.get().sword_level < 5) {
+    const ok = session.gainItem("sword_upgrade");
+    if (ok) session.pickupSwordUpgrade();
+    return { message: "Hòm kho báu: nâng cấp kiếm!" };
+  }
+  return { message: "Hòm kho báu: kiếm đã tối đa" };
 }

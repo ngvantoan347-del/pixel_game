@@ -199,6 +199,7 @@ export const MAPS: Record<MapId, ParsedMap> = (() => {
         if (ch === "B") map.boss = { x: cx, y: cy };
       });
     });
+    if (map.spawn.x === 0 && map.spawn.y === 0) map.spawn = findSpawn(rows);
     rows.forEach((row, y) => {
       row.split("").forEach((ch, x) => {
         if (ch !== "P") return;
