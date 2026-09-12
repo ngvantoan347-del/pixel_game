@@ -95,6 +95,7 @@ export class GameSession {
     const save = this.update({ quests: res.quests, coins: res.coins });
     events.emit("coins", { coins: res.coins });
     events.emit("toast", { message: "Nhận thưởng +40 xu!" });
+    events.emit("quest", this.questProgressPayload(res.quests));
     return save;
   }
 

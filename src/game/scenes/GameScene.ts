@@ -282,6 +282,7 @@ export class GameScene extends Phaser.Scene {
     const y = this.player.y;
     for (const npc of this.map.npcs) {
       if (positionInRange(x, y, npc.x, npc.y, 30)) {
+        if (this.scene.isActive("DialogueScene")) return;
         const session = getGameSession();
         if (session) this.scene.launch("DialogueScene", { npcId: "quest" });
         return;
