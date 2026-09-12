@@ -61,7 +61,6 @@ function chestTile(ctx: CanvasRenderingContext2D): void {
 
 function portalTile(ctx: CanvasRenderingContext2D): void {
   fill(ctx, 1, 1, 14, 14, "#123");
-  for (let i = 0; i < 24; i++) ctx.fillStyle = i % 2 ? "#3aa7c9" : "#7de3ff";
   for (let y = 2; y < 14; y += 3) {
     ctx.fillStyle = "#7de3ff";
     ctx.fillRect(2 + ((y * 3) % 12), y, 2, 1);
@@ -78,7 +77,6 @@ function treeTile(ctx: CanvasRenderingContext2D): void {
 }
 
 function waterTile(ctx: CanvasRenderingContext2D): void {
-  for (let i = 0; i < 8; i++) ctx.fillStyle = i % 2 ? "#1d5fa3" : "#2a7fc7";
   for (let y = 2; y < TILE_H; y += 4) {
     ctx.fillStyle = "#9fe8ff";
     ctx.fillRect(Math.floor(y / 2) % 6, y, 3, 1);
@@ -150,10 +148,8 @@ export function buildTileAtlas(scene: Phaser.Scene): Phaser.Textures.CanvasTextu
     const ty = Math.floor(i / cols) * TILE_H;
     drawTile(ctx, i);
     if (i === TILE.grass) sprout(ctx, tx, ty);
-    ctx.drawImage(ctx.canvas, tx, ty, TILE_W, TILE_H, tx, ty, TILE_W, TILE_H);
-    void tx; void ty;
+    ctx.drawImage(ctx.canvas, 0, 0, TILE_W, TILE_H, tx, ty, TILE_W, TILE_H);
   }
-  void ctx;
   canvas!.refresh();
   return canvas!;
 }
