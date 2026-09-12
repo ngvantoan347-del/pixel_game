@@ -100,6 +100,23 @@ export class GameScene extends Phaser.Scene {
       this.scene.launch("BossIntroScene");
     }
 
+    if (session) {
+      this.time.addEvent({
+        delay: 15000,
+        loop: true,
+        callback: () => {
+          pushSave(session.toSave()).then(() => events.emit("saveReady", { save: session.toSave() })).catch(() => {});
+        },
+      });
+      this.input.keyboard!.on("keydown-S", () => {
+        pushSave(session.toSave()).then(() => events.emit("saveReady", { save: session.toSave() })).catch(() => {});
+      });
+      this.input.keyboard!.on("keydown-ONE", () => {
+        session.drinkPotion();
+      });
+    }
+    this.input.mouse?.disableContextMenu();
+
     this.addMapDecor();
   }
 
@@ -248,7 +265,10 @@ export class GameScene extends Phaser.Scene {
       if (p.to && positionInRange(x, y, p.x, p.y, 14) && this.time.now - this.lastPortalAt > 700) {
         this.lastPortalAt = this.time.now;
         const session = getGameSession();
-        if (session) session.setPosition(p.to, p.out.x, p.out.y);
+        if (session) {
+          session.setPosition(p.to, p.out.x, p.out.y);
+          pushSave(session.toSave()).catch(() => {});
+        }
         events.emit("toast", { message: MAPS[p.to].name });
         this.scene.restart();
         return;
