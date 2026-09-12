@@ -4,16 +4,18 @@ import { MAPS, LEGEND, type ParsedMap } from "@/game/world/maps";
 import { events } from "@/game/systems/events";
 import { GameSession, getGameSession, setGameSession } from "@/game/systems/session";
 import { DEFAULT_SAVE } from "@/lib/saves";
-import { positionInRange } from "@/game/systems/combat";
+import { getSwordDamage, rollCoinDrop, knockbackPosition, positionInRange } from "@/game/systems/combat";
 import type { Direction } from "@/types";
 
 export const PLAYER_SPEED = 160;
 export const SOLID_TILES = new Set([3, 4, 5]);
+const SLIME_MAX_HP = 25;
 
 export class GameScene extends Phaser.Scene {
   map!: ParsedMap;
   player!: Phaser.Physics.Arcade.Sprite;
   layer!: Phaser.Tilemaps.TilemapLayer;
+  enemies!: Phaser.Physics.Arcade.Group;
   cursors!: {
     up: Phaser.Input.Keyboard.Key;
     down: Phaser.Input.Keyboard.Key;
@@ -24,6 +26,10 @@ export class GameScene extends Phaser.Scene {
   };
   facing: Direction = "down";
   lastPortalAt = 0;
+  slimeHp = new Map<Phaser.GameObjects.GameObject, number>();
+  attackTimer = 0;
+  attackRect: Phaser.GameObjects.Rectangle | null = null;
+  invulnUntil = 0;
 
   constructor() {
     super("GameScene");
@@ -68,6 +74,11 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.setZoom(2);
 
+    this.enemies = this.physics.add.group();
+    for (const e of this.map.enemies) this.addSlime(e.x, e.y);
+    this.physics.add.collider(this.enemies, this.layer);
+    this.input.keyboard!.on("keydown-SPACE", () => this.swingSword());
+
     this.addMapDecor();
   }
 
@@ -79,6 +90,97 @@ export class GameScene extends Phaser.Scene {
       backgroundColor: "#00000066",
       padding: { x: 6, y: 3 },
     }).setScrollFactor(0).setDepth(10).setOrigin(0, 0);
+  }
+
+  private addSlime(x: number, y: number): Phaser.Physics.Arcade.Sprite {
+    const s = this.physics.add.sprite(x, y, "slime");
+    this.slimeHp.set(s, SLIME_MAX_HP);
+    this.enemies.add(s);
+    return s;
+  }
+
+  private swingSword(): void {
+    if (this.attackRect || this.time.now < this.attackTimer) return;
+    this.attackTimer = this.time.now + 250;
+    const damage = getSwordDamage(getGameSession()?.get().sword_level ?? 1);
+    const rect = this.add.rectangle(this.player.x, this.player.y, 18, 18, 0xffffff, 0.35).setDepth(5);
+    this.physics.world.enable(rect);
+    (rect.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+    const offsets: Record<Direction, [number, number]> = {
+      up: [0, -18],
+      down: [0, 18],
+      left: [-18, 0],
+      right: [18, 0],
+    };
+    const [dx, dy] = offsets[this.facing];
+    rect.setPosition(this.player.x + dx, this.player.y + dy);
+    this.attackRect = rect;
+
+    const targets = [...this.enemies.getChildren()] as Phaser.Physics.Arcade.Sprite[];
+    for (const t of targets) {
+      if (!t.active) continue;
+      if (Phaser.Geom.Intersects.RectangleToRectangle(rect.getBounds(), t.getBounds())) {
+        this.hurtEnemy(t, damage);
+      }
+    }
+
+    this.time.delayedCall(140, () => {
+      if (this.attackRect) this.attackRect.destroy();
+      this.attackRect = null;
+    });
+  }
+
+  private hurtEnemy(s: Phaser.Physics.Arcade.Sprite, dmg: number): void {
+    const hp = (this.slimeHp.get(s) ?? SLIME_MAX_HP) - dmg;
+    this.slimeHp.set(s, hp);
+    s.setTintFill(0xffaaaa);
+    this.time.delayedCall(90, () => s.clearTint());
+    this.knockback(s, this.facing, 20);
+    if (hp <= 0) {
+      const coins = rollCoinDrop(3, 8);
+      const session = getGameSession();
+      s.destroy();
+      this.slimeHp.delete(s);
+      session?.addCoins(coins);
+      session?.slimeKilled();
+      events.emit("toast", { message: `Slime bị hạ! +${coins} xu` });
+    }
+  }
+
+  private knockback(s: Phaser.Physics.Arcade.Sprite, dir: Direction, dist: number): void {
+    const pos = knockbackPosition(s.x, s.y, dir, dist);
+    s.x = pos.x;
+    s.y = pos.y;
+    s.body!.reset(s.x, s.y);
+  }
+
+  private hurtPlayer(dmg: number): void {
+    const session = getGameSession();
+    if (!session) return;
+    if (this.time.now < this.invulnUntil) return;
+    this.invulnUntil = this.time.now + 800;
+    session.damage(dmg);
+    this.player.setTintFill(0xff5555);
+    this.time.delayedCall(120, () => this.player.clearTint());
+    events.emit("toast", { message: `Mất ${dmg} máu!` });
+    if (session.get().hp <= 0) this.scene.start("GameOverScene");
+  }
+
+  private updateEnemies(): void {
+    const copy = [...this.enemies.getChildren()] as Phaser.Physics.Arcade.Sprite[];
+    for (const s of copy) {
+      if (!s.active) continue;
+      const dx = this.player.x - s.x;
+      const dy = this.player.y - s.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 120) {
+        const spd = 60;
+        s.setVelocity((dx / Math.max(dist, 1)) * spd, (dy / Math.max(dist, 1)) * spd);
+        if (this.player.active && dist < 18) this.hurtPlayer(5);
+      } else {
+        s.setVelocity(0, 0);
+      }
+    }
   }
 
   private checkPortal(): void {
@@ -124,6 +226,7 @@ export class GameScene extends Phaser.Scene {
       body.setVelocity(0, 0);
     }
 
+    this.updateEnemies();
     this.checkPortal();
     this.checkInteract();
   }
