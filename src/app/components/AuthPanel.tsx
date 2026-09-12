@@ -28,6 +28,11 @@ export default function AuthPanel() {
     );
   }
 
+  function switchMode(next: Mode) {
+    setError(null);
+    setMode(next);
+  }
+
   async function handleLogout() {
     setError(null);
     try {
@@ -56,13 +61,13 @@ export default function AuthPanel() {
   return (
     <div style={{ display: "grid", gap: "0.75rem", maxWidth: 320, margin: "0 auto" }}>
       <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}>
-        <button type="button" onClick={() => setMode("login")} disabled={mode === "login"}>
+        <button type="button" onClick={() => switchMode("login")} disabled={mode === "login"}>
           Đăng nhập
         </button>
-        <button type="button" onClick={() => setMode("register")} disabled={mode === "register"}>
+        <button type="button" onClick={() => switchMode("register")} disabled={mode === "register"}>
           Đăng ký
         </button>
-        <button type="button" onClick={() => setMode("guest")} disabled={mode === "guest"}>
+        <button type="button" onClick={() => switchMode("guest")} disabled={mode === "guest"}>
           Chơi khách
         </button>
       </div>
