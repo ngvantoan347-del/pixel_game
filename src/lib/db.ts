@@ -13,6 +13,7 @@ function ensureFileDir(url: string) {
 }
 
 let singleton: Db | null = null;
+let schemaReady: Promise<void> | null = null;
 
 export function getDb(): Db {
   if (!singleton) {
@@ -21,6 +22,16 @@ export function getDb(): Db {
     singleton = createClient({ url });
   }
   return singleton;
+}
+
+export function ensureDb(): Promise<Db> {
+  if (!schemaReady) {
+    schemaReady = initSchema(getDb()).catch((err) => {
+      schemaReady = null;
+      throw err;
+    });
+  }
+  return schemaReady.then(() => singleton as Db);
 }
 
 export function createTestDb(): Db {
